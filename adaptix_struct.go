@@ -49,6 +49,7 @@ type AgentData struct {
 	Tags         string `json:"a_tags"`
 	Mark         string `json:"a_mark"`
 	Color        string `json:"a_color"`
+	TargetId     string `json:"a_target"`
 }
 
 type TaskDataTunnel struct {
@@ -120,6 +121,12 @@ type ListingDrivesDataWin struct {
 	Type string `json:"b_type"`
 }
 
+type ChatData struct {
+	Username string `json:"c_username"`
+	Message  string `json:"c_message"`
+	Date     int64  `json:"c_date"`
+}
+
 type DownloadData struct {
 	FileId     string `json:"d_file_id"`
 	AgentId    string `json:"d_agent_id"`
@@ -183,16 +190,15 @@ type CredsData struct {
 }
 
 type TargetData struct {
-	TargetId string `json:"t_target_id"`
-	Computer string `json:"t_computer"`
-	Domain   string `json:"t_domain"`
-	Address  string `json:"t_address"`
-	Os       int    `json:"t_os"`
-	OsDesk   string `json:"t_os_desk"`
-	Tag      string `json:"t_tag"`
-	Info     string `json:"t_info"`
-	Date     int64  `json:"t_date"`
-	Alive    bool   `json:"t_alive"`
-	Owned    bool   `json:"t_owned"`
+	TargetId string   `json:"t_target_id"`
+	Computer string   `json:"t_computer"`
+	Domain   string   `json:"t_domain"`
+	Address  string   `json:"t_address"`
+	Os       int      `json:"t_os"`
+	OsDesk   string   `json:"t_os_desk"`
+	Tag      string   `json:"t_tag"`
+	Info     string   `json:"t_info"`
+	Date     int64    `json:"t_date"`
+	Alive    bool     `json:"t_alive"`
+	Agents   []string `json:"t_agents"`
 }
-
