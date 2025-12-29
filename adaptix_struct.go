@@ -5,16 +5,17 @@ import (
 )
 
 type ListenerData struct {
-	Name      string `json:"l_name"`
-	RegName   string `json:"l_reg_name"`
-	Protocol  string `json:"l_protocol"`
-	Type      string `json:"l_type"`
-	BindHost  string `json:"l_bind_host"`
-	BindPort  string `json:"l_bind_port"`
-	AgentAddr string `json:"l_agent_addr"`
-	Status    string `json:"l_status"`
-	Data      string `json:"l_data"`
-	Watermark string `json:"l_watermark"`
+	Name       string `json:"l_name"`
+	RegName    string `json:"l_reg_name"`
+	Protocol   string `json:"l_protocol"`
+	Type       string `json:"l_type"`
+	BindHost   string `json:"l_bind_host"`
+	BindPort   string `json:"l_bind_port"`
+	AgentAddr  string `json:"l_agent_addr"`
+	CreateTime int64  `json:"a_create_time"`
+	Status     string `json:"l_status"`
+	Data       string `json:"l_data"`
+	Watermark  string `json:"l_watermark"`
 }
 
 type AgentData struct {
@@ -50,6 +51,7 @@ type AgentData struct {
 	Mark         string `json:"a_mark"`
 	Color        string `json:"a_color"`
 	TargetId     string `json:"a_target"`
+	CustomData   []byte `json:"a_custom_data"`
 }
 
 type TaskDataTunnel struct {
@@ -63,6 +65,7 @@ type TaskData struct {
 	AgentId     string `json:"t_agent_id"`
 	Client      string `json:"t_client"`
 	HookId      string `json:"t_hook_id"`
+	HandlerId   string `json:"t_handler_id"`
 	User        string `json:"t_user"`
 	Computer    string `json:"t_computer"`
 	StartDate   int64  `json:"t_start_date"`
