@@ -4,6 +4,55 @@ import (
 	"os"
 )
 
+type PluginListener interface {
+    Create(name, config string, customData []byte) (ExtenderListener, ListenerData, []byte, error)
+}
+
+type ExtenderListener interface {
+    Start() error
+    Edit(config string) (ListenerData, []byte, error)
+    Stop() error
+    GetProfile() ([]byte, error)
+    InternalHandler(data []byte) (string, error)
+}
+
+type PluginAgent interface {
+    Generate(config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
+
+    CreateAgent(beat []byte) (AgentData, AgentHandler, error)
+}
+
+type AgentHandler interface {
+    Encrypt(data []byte, key []byte) ([]byte, error)
+    Decrypt(data []byte, key []byte) ([]byte, error)
+
+    PackTasks(agentData AgentData, tasks []TaskData) ([]byte, error)
+
+    CreateCommand(agentData AgentData, args map[string]any) (TaskData, ConsoleMessageData, error)
+
+    ProcessData(agentData AgentData, decryptedData []byte) error
+
+    PivotPackData(pivotId string, data []byte) (TaskData, error)
+
+    TunnelCallbacks() TunnelCallbacks
+    TerminalCallbacks() TerminalCallbacks
+}
+
+type TunnelCallbacks struct {
+    ConnectTCP func(channelId, tunnelType, addressType int, address string, port int) TaskData
+    ConnectUDP func(channelId, tunnelType, addressType int, address string, port int) TaskData
+    WriteTCP   func(channelId int, data []byte) TaskData
+    WriteUDP   func(channelId int, data []byte) TaskData
+    Close      func(channelId int) TaskData
+    Reverse    func(tunnelId, port int) TaskData
+}
+
+type TerminalCallbacks struct {
+    Start func(terminalId int, program string, sizeH, sizeW, oemCP int) (TaskData, error)
+    Write func(terminalId, oemCP int, data []byte) (TaskData, error)
+    Close func(terminalId int) (TaskData, error)
+}
+
 type ListenerData struct {
 	Name       string `json:"l_name"`
 	RegName    string `json:"l_reg_name"`
