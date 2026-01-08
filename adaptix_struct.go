@@ -17,22 +17,21 @@ type ExtenderListener interface {
 }
 
 type PluginAgent interface {
-    Generate(config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
+    GenerateConfig(config string, listenerWM string, listenerProfile []byte) ([]byte, error)
+    BuildPayload(config string, agentConfig []byte, listenerProfile []byte) ([]byte, string, error)
 
-    CreateAgent(beat []byte) (AgentData, AgentHandler, error)
+    CreateAgent(beat []byte) (AgentData, ExtenderAgent, error)
 }
 
-type AgentHandler interface {
+type ExtenderAgent interface {
     Encrypt(data []byte, key []byte) ([]byte, error)
     Decrypt(data []byte, key []byte) ([]byte, error)
 
     PackTasks(agentData AgentData, tasks []TaskData) ([]byte, error)
+    PivotPackData(pivotId string, data []byte) (TaskData, error)
 
     CreateCommand(agentData AgentData, args map[string]any) (TaskData, ConsoleMessageData, error)
-
     ProcessData(agentData AgentData, decryptedData []byte) error
-
-    PivotPackData(pivotId string, data []byte) (TaskData, error)
 
     TunnelCallbacks() TunnelCallbacks
     TerminalCallbacks() TerminalCallbacks
@@ -48,9 +47,9 @@ type TunnelCallbacks struct {
 }
 
 type TerminalCallbacks struct {
-    Start func(terminalId int, program string, sizeH, sizeW, oemCP int) (TaskData, error)
-    Write func(terminalId, oemCP int, data []byte) (TaskData, error)
-    Close func(terminalId int) (TaskData, error)
+    Start func(terminalId int, program string, sizeH, sizeW, oemCP int) TaskData
+    Write func(terminalId, oemCP int, data []byte) TaskData
+    Close func(terminalId int) TaskData
 }
 
 type ListenerData struct {
