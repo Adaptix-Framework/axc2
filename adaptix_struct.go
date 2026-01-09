@@ -20,7 +20,8 @@ type PluginAgent interface {
     GenerateConfig(config string, listenerWM string, listenerProfile []byte) ([]byte, error)
     BuildPayload(config string, agentConfig []byte, listenerProfile []byte) ([]byte, string, error)
 
-    CreateAgent(beat []byte) (AgentData, ExtenderAgent, error)
+	GetExtender() ExtenderAgent
+	CreateAgent(beat []byte) (AgentData, ExtenderAgent, error)
 }
 
 type ExtenderAgent interface {
