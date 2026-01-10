@@ -4,53 +4,100 @@ import (
 	"os"
 )
 
+const (
+	OS_UNKNOWN = 0
+	OS_WINDOWS = 1
+	OS_LINUX   = 2
+	OS_MAC     = 3
+
+	TASK_TYPE_TASK       = 1
+	TASK_TYPE_BROWSER    = 2
+	TASK_TYPE_JOB        = 3
+	TASK_TYPE_TUNNEL     = 4
+	TASK_TYPE_PROXY_DATA = 5
+
+	MESSAGE_INFO    = 5
+	MESSAGE_ERROR   = 6
+	MESSAGE_SUCCESS = 7
+
+	BUILD_LOG_NONE    = 0
+	BUILD_LOG_INFO    = 1
+	BUILD_LOG_ERROR   = 2
+	BUILD_LOG_SUCCESS = 3
+
+	DOWNLOAD_STATE_RUNNING  = 1
+	DOWNLOAD_STATE_STOPPED  = 2
+	DOWNLOAD_STATE_FINISHED = 3
+	DOWNLOAD_STATE_CANCELED = 4
+
+	TUNNEL_TYPE_SOCKS4      = 1
+	TUNNEL_TYPE_SOCKS5      = 2
+	TUNNEL_TYPE_SOCKS5_AUTH = 3
+	TUNNEL_TYPE_LOCAL_PORT  = 4
+	TUNNEL_TYPE_REVERSE     = 5
+
+	ADDRESS_TYPE_IPV4   = 1
+	ADDRESS_TYPE_DOMAIN = 3
+	ADDRESS_TYPE_IPV6   = 4
+
+	SOCKS5_SUCCESS                 byte = 0
+	SOCKS5_SERVER_FAILURE          byte = 1
+	SOCKS5_NOT_ALLOWED_RULESET     byte = 2
+	SOCKS5_NETWORK_UNREACHABLE     byte = 3
+	SOCKS5_HOST_UNREACHABLE        byte = 4
+	SOCKS5_CONNECTION_REFUSED      byte = 5
+	SOCKS5_TTL_EXPIRED             byte = 6
+	SOCKS5_COMMAND_NOT_SUPPORTED   byte = 7
+	SOCKS5_ADDR_TYPE_NOT_SUPPORTED byte = 8
+)
+
 type PluginListener interface {
-    Create(name, config string, customData []byte) (ExtenderListener, ListenerData, []byte, error)
+	Create(name, config string, customData []byte) (ExtenderListener, ListenerData, []byte, error)
 }
 
 type ExtenderListener interface {
-    Start() error
-    Edit(config string) (ListenerData, []byte, error)
-    Stop() error
-    GetProfile() ([]byte, error)
-    InternalHandler(data []byte) (string, error)
+	Start() error
+	Edit(config string) (ListenerData, []byte, error)
+	Stop() error
+	GetProfile() ([]byte, error)
+	InternalHandler(data []byte) (string, error)
 }
 
 type PluginAgent interface {
-    GenerateConfig(config string, listenerWM string, listenerProfile []byte) ([]byte, error)
-    BuildPayload(config string, agentConfig []byte, listenerProfile []byte) ([]byte, string, error)
+	GenerateConfig(config string, listenerWM string, listenerProfile []byte) ([]byte, error)
+	BuildPayload(config string, agentConfig []byte, listenerProfile []byte, builderId string) ([]byte, string, error)
 
 	GetExtender() ExtenderAgent
 	CreateAgent(beat []byte) (AgentData, ExtenderAgent, error)
 }
 
 type ExtenderAgent interface {
-    Encrypt(data []byte, key []byte) ([]byte, error)
-    Decrypt(data []byte, key []byte) ([]byte, error)
+	Encrypt(data []byte, key []byte) ([]byte, error)
+	Decrypt(data []byte, key []byte) ([]byte, error)
 
-    PackTasks(agentData AgentData, tasks []TaskData) ([]byte, error)
-    PivotPackData(pivotId string, data []byte) (TaskData, error)
+	PackTasks(agentData AgentData, tasks []TaskData) ([]byte, error)
+	PivotPackData(pivotId string, data []byte) (TaskData, error)
 
-    CreateCommand(agentData AgentData, args map[string]any) (TaskData, ConsoleMessageData, error)
-    ProcessData(agentData AgentData, decryptedData []byte) error
+	CreateCommand(agentData AgentData, args map[string]any) (TaskData, ConsoleMessageData, error)
+	ProcessData(agentData AgentData, decryptedData []byte) error
 
-    TunnelCallbacks() TunnelCallbacks
-    TerminalCallbacks() TerminalCallbacks
+	TunnelCallbacks() TunnelCallbacks
+	TerminalCallbacks() TerminalCallbacks
 }
 
 type TunnelCallbacks struct {
-    ConnectTCP func(channelId, tunnelType, addressType int, address string, port int) TaskData
-    ConnectUDP func(channelId, tunnelType, addressType int, address string, port int) TaskData
-    WriteTCP   func(channelId int, data []byte) TaskData
-    WriteUDP   func(channelId int, data []byte) TaskData
-    Close      func(channelId int) TaskData
-    Reverse    func(tunnelId, port int) TaskData
+	ConnectTCP func(channelId, tunnelType, addressType int, address string, port int) TaskData
+	ConnectUDP func(channelId, tunnelType, addressType int, address string, port int) TaskData
+	WriteTCP   func(channelId int, data []byte) TaskData
+	WriteUDP   func(channelId int, data []byte) TaskData
+	Close      func(channelId int) TaskData
+	Reverse    func(tunnelId, port int) TaskData
 }
 
 type TerminalCallbacks struct {
-    Start func(terminalId int, program string, sizeH, sizeW, oemCP int) TaskData
-    Write func(terminalId, oemCP int, data []byte) TaskData
-    Close func(terminalId int) TaskData
+	Start func(terminalId int, program string, sizeH, sizeW, oemCP int) TaskData
+	Write func(terminalId, oemCP int, data []byte) TaskData
+	Close func(terminalId int) TaskData
 }
 
 type ListenerData struct {
