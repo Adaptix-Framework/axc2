@@ -51,6 +51,10 @@ const (
 	SOCKS5_ADDR_TYPE_NOT_SUPPORTED byte = 8
 )
 
+type PluginService interface {
+	Call(operator string, function string, args string)
+}
+
 type PluginListener interface {
 	Create(name, config string, customData []byte) (ExtenderListener, ListenerData, []byte, error)
 }
@@ -64,8 +68,8 @@ type ExtenderListener interface {
 }
 
 type PluginAgent interface {
-	GenerateConfig(config string, listenerWM string, listenerProfile []byte) ([]byte, error)
-	BuildPayload(config string, agentConfig []byte, listenerProfile []byte, builderId string) ([]byte, string, error)
+	GenerateProfiles(profile BuildProfile) ([][]byte, error)
+	BuildPayload(profile BuildProfile, agentProfiles [][]byte) ([]byte, string, error)
 
 	GetExtender() ExtenderAgent
 	CreateAgent(beat []byte) (AgentData, ExtenderAgent, error)
@@ -300,4 +304,15 @@ type TargetData struct {
 	Date     int64    `json:"t_date"`
 	Alive    bool     `json:"t_alive"`
 	Agents   []string `json:"t_agents"`
+}
+
+type TransportProfile struct {
+	Watermark string `json:"watermark"`
+	Profile   []byte `json:"profile"`
+}
+
+type BuildProfile struct {
+	BuilderId        string             `json:"build_id"`
+	AgentConfig      string             `json:"agent_params"`
+	ListenerProfiles []TransportProfile `json:"listener_profiles"`
 }
