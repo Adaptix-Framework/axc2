@@ -10,6 +10,7 @@ const (
 	OS_LINUX   = 2
 	OS_MAC     = 3
 
+	TASK_TYPE_LOCAL      = 0
 	TASK_TYPE_TASK       = 1
 	TASK_TYPE_BROWSER    = 2
 	TASK_TYPE_JOB        = 3
