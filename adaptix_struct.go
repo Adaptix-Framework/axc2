@@ -95,6 +95,8 @@ type TunnelCallbacks struct {
 	ConnectUDP func(channelId, tunnelType, addressType int, address string, port int) TaskData
 	WriteTCP   func(channelId int, data []byte) TaskData
 	WriteUDP   func(channelId int, data []byte) TaskData
+	Pause      func(channelId int) TaskData
+	Resume     func(channelId int) TaskData
 	Close      func(channelId int) TaskData
 	Reverse    func(tunnelId, port int) TaskData
 }
