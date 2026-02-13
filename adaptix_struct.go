@@ -241,8 +241,8 @@ type DownloadData struct {
 	Computer   string `json:"d_computer"`
 	RemotePath string `json:"d_remote_path"`
 	LocalPath  string `json:"d_local_path"`
-	TotalSize  int    `json:"d_total_size"`
-	RecvSize   int    `json:"d_recv_size"`
+	TotalSize  int64  `json:"d_total_size"`
+	RecvSize   int64  `json:"d_recv_size"`
 	Date       int64  `json:"d_date"`
 	State      int    `json:"d_state"`
 	File       *os.File
