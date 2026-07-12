@@ -1,9 +1,5 @@
 package adaptix
 
-import (
-	"os"
-)
-
 const (
 	OS_UNKNOWN = 0
 	OS_WINDOWS = 1
@@ -26,10 +22,13 @@ const (
 	BUILD_LOG_ERROR   = 2
 	BUILD_LOG_SUCCESS = 3
 
-	DOWNLOAD_STATE_RUNNING  = 1
-	DOWNLOAD_STATE_STOPPED  = 2
-	DOWNLOAD_STATE_FINISHED = 3
-	DOWNLOAD_STATE_CANCELED = 4
+	TRANSFER_STATE_RUNNING  = 1
+	TRANSFER_STATE_STOPPED  = 2
+	TRANSFER_STATE_FINISHED = 3
+	TRANSFER_STATE_CANCELED = 4
+
+	TRANSFER_KIND_FILE   = 0
+	TRANSFER_KIND_MEMORY = 1
 
 	TUNNEL_TYPE_SOCKS4      = 1
 	TUNNEL_TYPE_SOCKS5      = 2
@@ -52,6 +51,8 @@ const (
 	SOCKS5_ADDR_TYPE_NOT_SUPPORTED byte = 8
 )
 
+// Plugin interfaces
+
 type PluginService interface {
 	Call(operator string, function string, args string)
 }
@@ -65,47 +66,50 @@ type ExtenderListener interface {
 	Edit(config string) (ListenerData, []byte, error)
 	Stop() error
 	GetProfile() ([]byte, error)
-	InternalHandler(data []byte) (string, error)
+	InternalHandler(data []byte) (int64, error)
 }
 
 type PluginAgent interface {
 	GenerateProfiles(profile BuildProfile) ([][]byte, error)
 	BuildPayload(profile BuildProfile, agentProfiles [][]byte) ([]byte, string, error)
-
-	GetExtender() ExtenderAgent
-	CreateAgent(beat []byte) (AgentData, ExtenderAgent, error)
+	CreateAgent(beat []byte) (AgentData, AgentFunctions, error)
+	AgentRestore(agentData AgentData) AgentFunctions
 }
 
-type ExtenderAgent interface {
-	Encrypt(data []byte, key []byte) ([]byte, error)
-	Decrypt(data []byte, key []byte) ([]byte, error)
+type DeliveryFunc func(agentId int64, taskData TaskData) error
 
-	PackTasks(agentData AgentData, tasks []TaskData) ([]byte, error)
-	PivotPackData(pivotId string, data []byte) (TaskData, error)
-
-	CreateCommand(agentData AgentData, args map[string]any) (TaskData, ConsoleMessageData, error)
-	ProcessData(agentData AgentData, decryptedData []byte) error
-
-	TunnelCallbacks() TunnelCallbacks
-	TerminalCallbacks() TerminalCallbacks
+type AgentFunctions struct {
+	CreateCommand func(AgentData, map[string]any) (TaskData, ConsoleMessageData, error)
+	PackTasks     func(AgentData, []TaskData) ([]byte, error)
+	ProcessData   func(AgentData, []byte) error
+	Encrypt       func([]byte, []byte) ([]byte, error)
+	Decrypt       func([]byte, []byte) ([]byte, error)
+	PivotPackData func(string, []byte) (TaskData, error)
+	Delivery      DeliveryFunc
+	TunnelCB      TunnelCallbacks
+	TerminalCB    TerminalCallbacks
 }
+
+// Callbacks
 
 type TunnelCallbacks struct {
-	ConnectTCP func(channelId, tunnelType, addressType int, address string, port int) TaskData
-	ConnectUDP func(channelId, tunnelType, addressType int, address string, port int) TaskData
-	WriteTCP   func(channelId int, data []byte) TaskData
-	WriteUDP   func(channelId int, data []byte) TaskData
-	Pause      func(channelId int) TaskData
-	Resume     func(channelId int) TaskData
-	Close      func(channelId int) TaskData
-	Reverse    func(tunnelId, port int) TaskData
+	ConnectTCP func(channelId int64, tunnelType, addressType int, address string, port int) TaskData
+	ConnectUDP func(channelId int64, tunnelType, addressType int, address string, port int) TaskData
+	WriteTCP   func(channelId int64, data []byte) TaskData
+	WriteUDP   func(channelId int64, data []byte) TaskData
+	Pause      func(channelId int64) TaskData
+	Resume     func(channelId int64) TaskData
+	Close      func(channelId int64) TaskData
+	Reverse    func(tunnelId int64, port int) TaskData
 }
 
 type TerminalCallbacks struct {
-	Start func(terminalId int, program string, sizeH, sizeW, oemCP int) TaskData
-	Write func(terminalId, oemCP int, data []byte) TaskData
-	Close func(terminalId int) TaskData
+	Start func(terminalId int64, program string, sizeH, sizeW, oemCP int) TaskData
+	Write func(terminalId int64, oemCP int, data []byte) TaskData
+	Close func(terminalId int64) TaskData
 }
+
+// Data structures
 
 type ListenerData struct {
 	Name       string `json:"l_name"`
@@ -117,13 +121,15 @@ type ListenerData struct {
 	AgentAddr  string `json:"l_agent_addr"`
 	CreateTime int64  `json:"a_create_time"`
 	Status     string `json:"l_status"`
+	Tags       string `json:"l_tags"`
 	Data       string `json:"l_data"`
 	Watermark  string `json:"l_watermark"`
 }
 
 type AgentData struct {
 	Crc          string `json:"a_crc"`
-	Id           string `json:"a_id"`
+	Id           int64  `json:"a_id"`
+	UID          []byte `json:"a_uid"`
 	Name         string `json:"a_name"`
 	SessionKey   []byte `json:"a_session_key"`
 	Listener     string `json:"a_listener"`
@@ -153,19 +159,19 @@ type AgentData struct {
 	Tags         string `json:"a_tags"`
 	Mark         string `json:"a_mark"`
 	Color        string `json:"a_color"`
-	TargetId     string `json:"a_target"`
+	TargetId     int64  `json:"a_target"`
 	CustomData   []byte `json:"a_custom_data"`
 }
 
 type TaskDataTunnel struct {
-	ChannelId int
-	Data	  TaskData
+	ChannelId int64
+	Data      TaskData
 }
 
 type TaskData struct {
 	Type        int    `json:"t_type"`
-	TaskId      string `json:"t_task_id"`
-	AgentId     string `json:"t_agent_id"`
+	TaskId      int64  `json:"t_task_id"`
+	AgentId     int64  `json:"t_agent_id"`
 	Client      string `json:"t_client"`
 	HookId      string `json:"t_hook_id"`
 	HandlerId   string `json:"t_handler_id"`
@@ -179,7 +185,14 @@ type TaskData struct {
 	Message     string `json:"t_message"`
 	ClearText   string `json:"t_clear_text"`
 	Completed   bool   `json:"t_completed"`
+	Priority    uint   `json:"t_priority"`
 	Sync        bool   `json:"t_sync"`
+
+	Repeat         bool `json:"-"`
+	DispatchBudget int  `json:"-"`
+
+	OnDispatch func(ts any, task *TaskData) `json:"-"`
+	OnComplete func(ts any, task *TaskData) `json:"-"`
 }
 
 type ConsoleMessageData struct {
@@ -233,23 +246,29 @@ type ChatData struct {
 	Date     int64  `json:"c_date"`
 }
 
-type DownloadData struct {
-	FileId     string `json:"d_file_id"`
-	AgentId    string `json:"d_agent_id"`
-	AgentName  string `json:"d_agent_name"`
-	User       string `json:"d_user"`
-	Computer   string `json:"d_computer"`
-	RemotePath string `json:"d_remote_path"`
-	LocalPath  string `json:"d_local_path"`
-	TotalSize  int64  `json:"d_total_size"`
-	RecvSize   int64  `json:"d_recv_size"`
-	Date       int64  `json:"d_date"`
-	State      int    `json:"d_state"`
-	File       *os.File
+type TransferData struct {
+	FileId       int64  `json:"t_file_id"`
+	AgentId      int64  `json:"t_agent_id"`
+	AgentName    string `json:"t_agent_name"`
+	User         string `json:"t_user"`
+	Computer     string `json:"t_computer"`
+	RemotePath   string `json:"t_remote_path"`
+	LocalPath    string `json:"t_local_path"`
+	TotalSize    int64  `json:"t_total_size"`
+	Progress     int64  `json:"t_progress"`
+	ReadOffset   int64  `json:"-"`
+	Date         int64  `json:"t_date"`
+	State        int    `json:"t_state"`
+	Tag          string `json:"t_tag"`
+	Cancellable  bool   `json:"t_cancellable"`
+	Kind         int    `json:"t_kind"`
+	ArtifactName string `json:"t_artifact_name,omitempty"`
+	ArtifactType string `json:"t_artifact_type,omitempty"`
 }
 
 type ScreenData struct {
-	ScreenId  string `json:"s_screen_id"`
+	ScreenId  int64  `json:"s_screen_id"`
+	AgentId   int64  `json:"s_agent_id"`
 	User      string `json:"s_user"`
 	Computer  string `json:"s_computer"`
 	LocalPath string `json:"s_local_path"`
@@ -259,8 +278,8 @@ type ScreenData struct {
 }
 
 type TunnelData struct {
-	TunnelId  string `json:"p_tunnel_id"`
-	AgentId   string `json:"p_agent_id"`
+	TunnelId  int64  `json:"p_tunnel_id"`
+	AgentId   int64  `json:"p_agent_id"`
 	Computer  string `json:"p_computer"`
 	Username  string `json:"p_username"`
 	Process   string `json:"p_process"`
@@ -273,17 +292,26 @@ type TunnelData struct {
 	Fport     string `json:"p_fport"`
 	AuthUser  string `json:"p_auth_user"`
 	AuthPass  string `json:"p_auth_pass"`
+	Date      int64  `json:"p_date"`
 }
 
 type PivotData struct {
 	PivotId       string `json:"p_pivot_id"`
 	PivotName     string `json:"p_pivot_name"`
-	ParentAgentId string `json:"p_parent_agent_id"`
-	ChildAgentId  string `json:"p_child_agent_id"`
+	ParentAgentId int64  `json:"p_parent_agent_id"`
+	ChildAgentId  int64  `json:"p_child_agent_id"`
+}
+
+type GroupData struct {
+	GroupId       int64   `json:"group_id"`
+	ParentGroupId int64   `json:"parent_group_id"`
+	GroupName     string  `json:"group_name"`
+	Scope         string  `json:"scope"`
+	Members       []int64 `json:"members"`
 }
 
 type CredsData struct {
-	CredId   string `json:"c_creds_id"`
+	CredId   int64  `json:"c_creds_id"`
 	Username string `json:"c_username"`
 	Password string `json:"c_password"`
 	Realm    string `json:"c_realm"`
@@ -291,22 +319,22 @@ type CredsData struct {
 	Tag      string `json:"c_tag"`
 	Date     int64  `json:"c_date"`
 	Storage  string `json:"c_storage"`
-	AgentId  string `json:"c_agent_id"`
+	AgentId  int64  `json:"c_agent_id"`
 	Host     string `json:"c_host"`
 }
 
 type TargetData struct {
-	TargetId string   `json:"t_target_id"`
-	Computer string   `json:"t_computer"`
-	Domain   string   `json:"t_domain"`
-	Address  string   `json:"t_address"`
-	Os       int      `json:"t_os"`
-	OsDesk   string   `json:"t_os_desk"`
-	Tag      string   `json:"t_tag"`
-	Info     string   `json:"t_info"`
-	Date     int64    `json:"t_date"`
-	Alive    bool     `json:"t_alive"`
-	Agents   []string `json:"t_agents"`
+	TargetId int64   `json:"t_target_id"`
+	Computer string  `json:"t_computer"`
+	Domain   string  `json:"t_domain"`
+	Address  string  `json:"t_address"`
+	Os       int     `json:"t_os"`
+	OsDesk   string  `json:"t_os_desk"`
+	Tag      string  `json:"t_tag"`
+	Info     string  `json:"t_info"`
+	Date     int64   `json:"t_date"`
+	Alive    bool    `json:"t_alive"`
+	Agents   []int64 `json:"t_agents"`
 }
 
 type TransportProfile struct {
@@ -318,4 +346,25 @@ type BuildProfile struct {
 	BuilderId        string             `json:"build_id"`
 	AgentConfig      string             `json:"agent_params"`
 	ListenerProfiles []TransportProfile `json:"listener_profiles"`
+}
+
+// Logging
+
+type LogStatus int
+
+const (
+	LogStatusDebug   LogStatus = 0
+	LogStatusInfo    LogStatus = 1
+	LogStatusSuccess LogStatus = 2
+	LogStatusWarn    LogStatus = 3
+	LogStatusError   LogStatus = 4
+)
+
+type LogEntry struct {
+	Id      int64     `json:"id"`
+	Time    int64     `json:"time"`
+	Status  LogStatus `json:"status"`
+	Level   int       `json:"level"`
+	Source  string    `json:"source"`
+	Message string    `json:"message"`
 }
