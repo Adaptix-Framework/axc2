@@ -143,7 +143,7 @@ func (s *Agent) DecryptData(data []byte) ([]byte, error) {
 	return s.Fn.Decrypt(data, s.GetData().SessionKey)
 }
 
-// HookJob
+// --- HookJob ---
 
 type HookJob struct {
 	Sent      bool

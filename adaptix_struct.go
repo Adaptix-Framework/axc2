@@ -51,7 +51,7 @@ const (
 	SOCKS5_ADDR_TYPE_NOT_SUPPORTED byte = 8
 )
 
-// Plugin interfaces
+// --- Plugin interfaces ---
 
 type PluginService interface {
 	Call(operator string, function string, args string)
@@ -90,7 +90,7 @@ type AgentFunctions struct {
 	TerminalCB    TerminalCallbacks
 }
 
-// Callbacks
+// --- Callbacks ---
 
 type TunnelCallbacks struct {
 	ConnectTCP func(channelId int64, tunnelType, addressType int, address string, port int) TaskData
@@ -109,7 +109,7 @@ type TerminalCallbacks struct {
 	Close func(terminalId int64) TaskData
 }
 
-// Data structures
+// --- Data structures ---
 
 type ListenerData struct {
 	Name       string `json:"l_name"`
@@ -293,6 +293,7 @@ type TunnelData struct {
 	AuthUser  string `json:"p_auth_user"`
 	AuthPass  string `json:"p_auth_pass"`
 	Date      int64  `json:"p_date"`
+	Active    bool   `json:"p_active"`
 }
 
 type PivotData struct {
@@ -348,7 +349,7 @@ type BuildProfile struct {
 	ListenerProfiles []TransportProfile `json:"listener_profiles"`
 }
 
-// Logging
+// --- Logging ---
 
 type LogStatus int
 
@@ -361,10 +362,21 @@ const (
 )
 
 type LogEntry struct {
-	Id      int64     `json:"id"`
-	Time    int64     `json:"time"`
-	Status  LogStatus `json:"status"`
-	Level   int       `json:"level"`
-	Source  string    `json:"source"`
-	Message string    `json:"message"`
+	Id       int64     `json:"id"`
+	Time     int64     `json:"time"`
+	Status   LogStatus `json:"status"`
+	Level    int       `json:"level"`
+	Source   string    `json:"source"`
+	Category string    `json:"category,omitempty"`
+	Message  string    `json:"message"`
+}
+
+func (e LogEntry) LogSourceKey() string {
+	if e.Category == "" {
+		return e.Source
+	}
+	if e.Source == "" {
+		return e.Category
+	}
+	return e.Source + "::" + e.Category
 }

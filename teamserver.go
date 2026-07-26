@@ -3,6 +3,7 @@ package adaptix
 import (
 	"context"
 	"io"
+	"net/http"
 )
 
 type WebSocketConn interface {
@@ -28,6 +29,7 @@ type Teamserver interface {
 	TsAgentConsoleOutput(agentId int64, client string, messageType int, message string, clearText string, store bool)
 	TsAgentConsoleOutputClient(agentId int64, client string, messageType int, message string, clearText string)
 	TsAgentConsoleErrorCommand(agentId int64, client string, cmdline string, message string, HookId string, HandlerId string)
+	TsAgentConsoleLocalCommand(agentId int64, client string, cmdline string, message string, text string)
 
 	TsAgentProcessData(agentId int64, bodyData []byte) error
 	TsAgentBuildEmptyTasks(agentId int64) ([]byte, error)
@@ -41,8 +43,10 @@ type Teamserver interface {
 
 	TsAgentBuildSyncOnce(agentName string, config string, listenersName []string) ([]byte, string, error)
 	TsAgentBuildCreateChannel(buildData string, wsconn WebSocketConn) error
-	TsAgentBuildExecute(builderId string, workingDir string, program string, args ...string) error
+	TsAgentBuildExecute(builderId string, workingDir string, env []string, program string, args ...string) error
 	TsAgentBuildLog(builderId string, status int, message string) error
+	TsAgentBuildSendFile(builderId string, filename string, content []byte) error
+	TsAgentBuildClose(builderId string)
 
 	TsTaskGenID() int64
 	TsTaskCreate(agentId int64, cmdline string, client string, taskData TaskData)
@@ -65,9 +69,11 @@ type Teamserver interface {
 	TsTunnelClientStart(AgentId int64, Listen bool, Type int, Info string, Lhost string, Lport int, Client string, Thost string, Tport int, AuthUser string, AuthPass string) (int64, error)
 	TsTunnelClientNewChannel(TunnelData string, wsconn WebSocketConn) error
 	TsTunnelStart(TunnelId int64) (int64, error)
+	TsTunnelDeactivate(TunnelId int64, clientName string) error
 	TsTunnelClientStop(TunnelId int64, Client string) error
 	TsTunnelStop(TunnelId int64) error
-	TsTunnelClientSetInfo(TunnelId int64, Info string) error
+	TsTunnelClientCanControl(TunnelId int64, clientName string) error
+	TsTunnelClientSetInfo(TunnelId int64, Info string, clientName string) error
 	TsTunnelCreateSocks4(AgentId int64, Info string, Lhost string, Lport int) (int64, error)
 	TsTunnelCreateSocks5(AgentId int64, Info string, Lhost string, Lport int, UseAuth bool, Username string, Password string) (int64, error)
 	TsTunnelCreateLportfwd(AgentId int64, Info string, Lhost string, Lport int, Thost string, Tport int) (int64, error)
@@ -108,8 +114,10 @@ type Teamserver interface {
 	TsDownloadGetFilepath(fileId int64) (string, error)
 
 	TsUploadGet(fileId int64) (TransferData, error)
+	TsUploadAdd(agentId int64, fileId int64, localPath string, remotePath string) error
 	TsUploadAddContent(agentId int64, fileId int64, remotePath string, content []byte, canceled bool, kind int, artname string, arttype string) error
 	TsUploadGetChunk(fileId int64, chunkSize int, needApprove bool) ([]byte, error)
+	TsUploadApprove(fileId int64, approvedBytes int) error
 	TsUploadClose(fileId int64, reason int) error
 	TsUploadsGetPage(agentId int64, offset, limit int, filterExpr, sortCol, sortOrder string) ([]byte, error)
 	TsUploadDelete(fileIds []int64) error
@@ -136,6 +144,7 @@ type Teamserver interface {
 	TsTargetsList() (string, error)
 	TsTargetsGetPage(offset, limit int, filterExpr, sortCol, sortOrder string) ([]byte, error)
 	TsTargetsAdd(targets []map[string]interface{}) error
+	TsTargetsCreateAlive(agentData AgentData) (int64, error)
 	TsTargetsEdit(targetId int64, computer string, domain string, address string, os int, osDesk string, tag string, info string, alive bool) error
 	TsTargetDelete(targetsId []int64) error
 	TsTargetSetTag(targetsId []int64, tag string) error
@@ -158,8 +167,8 @@ type Teamserver interface {
 	TsPivotDelete(pivotId string) error
 
 	TsListenerList() (string, error)
-	TsListenerStart(listenerName string, configType string, config string, createTime int64, watermark string, customData []byte) error
-	TsListenerEdit(listenerName string, configType string, config string) error
+	TsListenerStart(listenerName string, configType string, config string, createTime int64, watermark string, customData []byte, tags string) error
+	TsListenerEdit(listenerName string, configType string, config string, tags string) error
 	TsListenerStop(listenerName string, configType string) error
 	TsListenerPause(listenerName string, configType string) error
 	TsListenerResume(listenerName string, configType string) error
@@ -182,17 +191,32 @@ type Teamserver interface {
 	TsAxScriptParseAndExecute(agentId int64, username string, cmdline string) error
 	AxGetAgentContext(agentId int64) (agentName string, listenerRegName string, osType int, err error)
 
+	TsEventHandlersList() (string, error) // JSON []EventHandlerInfo (full)
+	TsEventHandlersGetPage(offset, limit int, q, event, source, group, enabled string) ([]byte, error)
+	TsEventHandlerRegister(requestJSON string, operator string) (string, error)
+	TsEventHandlerGet(id string) (string, error)
+	TsEventHandlerEnable(id string) error
+	TsEventHandlerDisable(id string) error
+	TsEventHandlerRemove(id string) error
+	TsEventMute(eventType string) error
+	TsEventUnmute(eventType string) error
+	TsEventMutesList() (string, error) // JSON []string
+	TsEventHookSetEnabled(hookID string, enabled bool) error
+
 	TsGroupList(scope string) []map[string]interface{}
 	TsGroupCreate(parentId int64, name string, scope string) error
 	TsGroupRename(groupId int64, name string) error
 	TsGroupDelete(groupId int64) error
 	TsGroupMembers(groupId int64, add []int64, remove []int64) error
+	TsGroupMoveMember(agentId, fromGroupId, toGroupId int64) error
 	TsGroupReparent(groupId int64, newParentId int64) error
 
-	TsLogAdd(status LogStatus, level int, source string, format string, args ...any)
-	TsLogWriter(status LogStatus, source string) io.Writer
+	TsLogAdd(status LogStatus, level int, source, category string, format string, args ...any)
+	TsLogWriter(status LogStatus, source, category string) io.Writer
 	TsLogsGetPage(offset, limit int) ([]byte, error)
+	TsLogsGetPageFiltered(offset, limit int, sourceFilter, categoryFilter, contains string) ([]byte, error)
 	TsLogsGetPageBeforeId(beforeId int64, limit int) ([]byte, error)
+	TsLogsGetPageBeforeIdFiltered(beforeId int64, limit int, sourceFilter, categoryFilter, contains string) ([]byte, error)
 
 	TsChatSendMessage(username string, message string, replyToId int64, replyToName string)
 	TsChatEditMessage(username string, id int64, newMessage string) error
@@ -206,6 +230,7 @@ type Teamserver interface {
 	TsChatCount() int
 
 	TsClientExists(username string) bool
+	TsClientConnected(username string) bool
 	TsClientDisconnect(username string)
 	TsClientConnect(username string, socket WebSocketConn, clientType uint8, consoleTeamMode bool, subscriptions []string)
 	TsClientSync(username string)
@@ -220,8 +245,12 @@ type Teamserver interface {
 
 	TsFrameHasPending(sessionId int64) bool
 	TsFramePut(sessionId int64, index uint32, data []byte, totalSize uint32, chunkCount uint16) (bool, uint32, uint32, uint32, []byte)
+	TsFramePutStream(sessionId int64, seqNum uint32, data []byte, isLast bool) (bool, []byte)
 	TsFrameGetChunk(sessionId int64, reqOffset uint32, maxChunkSize int, encode func([]byte) []byte) (uint32, uint32, []byte, uint32, bool)
+	TsFrameGetChunkSticky(sessionId int64, reqOffset uint32, maxChunkSize int, encode func([]byte) []byte) (uint32, uint32, []byte, uint32, bool)
 	TsFrameAckDelivery(sessionId int64, ackOffset uint32, ackNonce uint32)
+	TsFrameResetUpstream(sessionId int64)
+	TsFrameResetDownstream(sessionId int64)
 
 	TsExtenderDataSave(extenderName string, key string, data []byte) error
 	TsExtenderDataLoad(extenderName string, key string) ([]byte, error)
@@ -230,8 +259,21 @@ type Teamserver interface {
 	TsExtenderDataDeleteAll(extenderName string) error
 
 	TsEventHookRegister(eventType string, name string, phase int, priority int, handler func(event any) error) string
+	TsEventHookOnPre(eventType string, name string, handler func(event any) error) string
+	TsEventHookOnPost(eventType string, name string, handler func(event any) error) string
+	TsEventHookUnregister(hookID string) bool
 	TsEventHookUnregisterByName(name string) int
 
 	TsServiceSendDataAll(service string, data string)
 	TsServiceSendDataClient(operator string, service string, data string)
+
+	TsEndpointRegister(method string, path string, handler func(username string, body []byte) (int, []byte)) error
+	TsEndpointRegisterRaw(method string, path string, handler func(w http.ResponseWriter, r *http.Request, username string)) error
+	TsEndpointUnregister(method string, path string) error
+	TsEndpointExists(method string, path string) bool
+
+	TsEndpointRegisterPublic(method string, path string, handler func(body []byte) (int, []byte)) error
+	TsEndpointRegisterPublicRaw(method string, path string, handler func(w http.ResponseWriter, r *http.Request)) error
+	TsEndpointUnregisterPublic(method string, path string) error
+	TsEndpointExistsPublic(method string, path string) bool
 }
