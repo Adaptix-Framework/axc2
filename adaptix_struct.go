@@ -75,7 +75,7 @@ type PluginAgent interface {
 	BuildPayload(profile BuildProfile, agentProfiles [][]byte) ([]byte, string, error)
 	CreateAgent(beat []byte) (AgentData, AgentFunctions, error)
 	AgentRestore(agentData AgentData) AgentFunctions
-	Call(operator string, agentId agentId, function string, args string)
+	Call(operator string, agentId int64, function string, args string)
 }
 
 type DeliveryFunc func(agentId int64, taskData TaskData) error
