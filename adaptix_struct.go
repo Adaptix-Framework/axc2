@@ -59,6 +59,7 @@ type PluginService interface {
 
 type PluginListener interface {
 	Create(name, config string, customData []byte) (ExtenderListener, ListenerData, []byte, error)
+	Call(operator string, listenerName string, function string, args string)
 }
 
 type ExtenderListener interface {
@@ -74,6 +75,7 @@ type PluginAgent interface {
 	BuildPayload(profile BuildProfile, agentProfiles [][]byte) ([]byte, string, error)
 	CreateAgent(beat []byte) (AgentData, AgentFunctions, error)
 	AgentRestore(agentData AgentData) AgentFunctions
+	Call(operator string, agentId agentId, function string, args string)
 }
 
 type DeliveryFunc func(agentId int64, taskData TaskData) error
@@ -347,6 +349,31 @@ type BuildProfile struct {
 	BuilderId        string             `json:"build_id"`
 	AgentConfig      string             `json:"agent_params"`
 	ListenerProfiles []TransportProfile `json:"listener_profiles"`
+}
+
+type PayloadData struct {
+	PayloadId  int64    `json:"p_id"`
+	Name       string   `json:"p_name"`
+	AgentType  string   `json:"p_type"`
+	Artifact   string   `json:"p_artifact"`
+	Arch       string   `json:"p_arch"`
+	Listeners  []string `json:"p_listeners"`
+	Size       int64    `json:"p_size"`
+	Sha1       string   `json:"p_sha1"`
+	Sha256     string   `json:"p_sha256"`
+	Md5        string   `json:"p_md5"`
+	Creator    string   `json:"p_creator"`
+	Created    int64    `json:"p_date"`
+	Hidden     bool     `json:"p_hidden"`
+	LocalPath  string   `json:"p_local_path,omitempty"`
+	ConfigJson string   `json:"p_config,omitempty"`
+	BuildId    string   `json:"p_build_id,omitempty"`
+	Watermark  string   `json:"p_watermark,omitempty"`
+	Filename   string   `json:"p_filename"`
+	Notes      string   `json:"p_notes,omitempty"`
+	Uid        string   `json:"p_uid,omitempty"`
+	Color      string   `json:"p_color,omitempty"`
+	Missing    bool     `json:"p_missing,omitempty"`
 }
 
 // --- Logging ---

@@ -22,7 +22,6 @@ type Teamserver interface {
 	TsAgentUpdateData(newAgentData AgentData) error
 	TsAgentTerminate(agentId int64, terminateTaskId int64) error
 	TsAgentRemove(agentId int64) error
-	TsAgentConsoleRemove(agentId int64) error
 	TsAgentTickUpdate(ctx context.Context)
 
 	TsAgentCommand(agentName string, agentId int64, clientName string, hookId string, handlerId string, cmdline string, ui bool, args map[string]any) error
@@ -41,12 +40,24 @@ type Teamserver interface {
 	TsAgentEncryptData(agentId int64, data []byte) ([]byte, error)
 	TsAgentDecryptData(agentId int64, data []byte) ([]byte, error)
 
-	TsAgentBuildSyncOnce(agentName string, config string, listenersName []string) ([]byte, string, error)
-	TsAgentBuildCreateChannel(buildData string, wsconn WebSocketConn) error
+	TsAgentBuildSyncOnce(agentName string, config string, listenersName []string, creator string, saveToStore bool, description string) ([]byte, string, error)
+	TsAgentBuildCreateChannel(buildData string, wsconn WebSocketConn, creator string) error
 	TsAgentBuildExecute(builderId string, workingDir string, env []string, program string, args ...string) error
 	TsAgentBuildLog(builderId string, status int, message string) error
 	TsAgentBuildSendFile(builderId string, filename string, content []byte) error
 	TsAgentBuildClose(builderId string)
+
+	TsPayloadRegister(agentType, filename string, content []byte, listeners []string, configJson, creator, buildId, watermark, description string) (PayloadData, error)
+	TsPayloadList(showHidden bool) ([]byte, error)
+	TsPayloadGetPage(offset, limit int, showHidden bool, filterExpr, sortCol, sortOrder string) ([]byte, error)
+	TsPayloadGet(id int64) (PayloadData, error)
+	TsPayloadDownload(id int64) (string, []byte, error)
+	TsPayloadHide(ids []int64, hidden bool) error
+	TsPayloadUpdateMeta(id int64, name, notes, artifact, arch string, hidden bool) (PayloadData, error)
+	TsPayloadSetColor(ids []int64, background, foreground string, reset bool) error
+	TsPayloadRemove(ids []int64, hard bool) error
+	TsPayloadSync() ([]byte, error)
+	TsPayloadImport(name, agentType, artifact, arch, creator string, listeners []string, content []byte, configJson string) (PayloadData, error)
 
 	TsTaskGenID() int64
 	TsTaskCreate(agentId int64, cmdline string, client string, taskData TaskData)
@@ -179,7 +190,8 @@ type Teamserver interface {
 
 	TsServiceLoad(configPath string) error
 	TsServiceUnload(serviceName string) error
-	TsServiceCall(serviceName string, operator string, function string, args string)
+	TsPluginServiceCall(serviceName string, operator string, function string, args string)
+	TsPluginServiceCallWait(serviceName string, operator string, function string, args string, timeoutMs int) (resultJSON string, err error)
 	TsServiceList() (string, error)
 
 	TsAxScriptLoadUser(name string, script string) error
@@ -264,8 +276,14 @@ type Teamserver interface {
 	TsEventHookUnregister(hookID string) bool
 	TsEventHookUnregisterByName(name string) int
 
-	TsServiceSendDataAll(service string, data string)
-	TsServiceSendDataClient(operator string, service string, data string)
+	TsPluginServiceSendDataAll(service string, data string)
+	TsPluginServiceSendDataClient(operator string, service string, data string)
+	TsPluginAgentCall(agentId int64, operator string, function string, args string)
+	TsPluginAgentSendDataAll(agentId int64, data string)
+	TsPluginAgentSendDataClient(operator string, agentId int64, data string)
+	TsPluginListenerCall(listenerName string, operator string, function string, args string)
+	TsPluginListenerSendDataAll(listenerName string, data string)
+	TsPluginListenerSendDataClient(operator string, listenerName string, data string)
 
 	TsEndpointRegister(method string, path string, handler func(username string, body []byte) (int, []byte)) error
 	TsEndpointRegisterRaw(method string, path string, handler func(w http.ResponseWriter, r *http.Request, username string)) error
