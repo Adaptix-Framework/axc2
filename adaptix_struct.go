@@ -78,8 +78,6 @@ type PluginAgent interface {
 	Call(operator string, agentId int64, function string, args string)
 }
 
-type DeliveryFunc func(agentId int64, taskData TaskData) error
-
 type AgentFunctions struct {
 	CreateCommand func(AgentData, map[string]any) (TaskData, ConsoleMessageData, error)
 	PackTasks     func(AgentData, []TaskData) ([]byte, error)
