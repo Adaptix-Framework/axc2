@@ -39,6 +39,8 @@ type Teamserver interface {
 	TsAgentSetTick(agentId int64, listenerName string) error
 	TsAgentEncryptData(agentId int64, data []byte) ([]byte, error)
 	TsAgentDecryptData(agentId int64, data []byte) ([]byte, error)
+	TsAgentCommandGroupSet(agentId int64, groupId string, enabled bool) error
+	TsAgentCommandGroupList(agentId int64) ([]map[string]interface{}, error)
 
 	TsAgentBuildSyncOnce(agentName string, config string, listenersName []string, creator string, saveToStore bool, description string) ([]byte, string, error)
 	TsAgentBuildCreateChannel(buildData string, wsconn WebSocketConn, creator string) error

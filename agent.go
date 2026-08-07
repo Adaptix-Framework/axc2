@@ -1,12 +1,16 @@
 package adaptix
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 
 	"github.com/Adaptix-Framework/axsafe"
 )
+
+type DeliveryFunc func(agentId int64, taskData TaskData) error
 
 var ErrAgentRemoved = fmt.Errorf("agent removed")
 
@@ -24,6 +28,9 @@ type Agent struct {
 	pivotMu      sync.RWMutex
 	PivotParent  *PivotData
 	PivotChilds  *axsafe.Slice
+
+	cmdGroupMu      sync.RWMutex
+	cmdGroupEnabled map[string]bool
 }
 
 func NewAgent(data AgentData, fn AgentFunctions) *Agent {
@@ -93,16 +100,85 @@ func (s *Agent) GetData() AgentData {
 	return s.data
 }
 
-func (s *Agent) SetData(d AgentData) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	s.data = d
-}
-
 func (s *Agent) UpdateData(fn func(*AgentData)) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	fn(&s.data)
+}
+
+func (s *Agent) SetCommandGroupEnabled(groupId string, enabled bool) {
+	if groupId == "" {
+		return
+	}
+	s.cmdGroupMu.Lock()
+	defer s.cmdGroupMu.Unlock()
+	if s.cmdGroupEnabled == nil {
+		s.cmdGroupEnabled = make(map[string]bool)
+	}
+	s.cmdGroupEnabled[groupId] = enabled
+}
+
+func (s *Agent) IsCommandGroupEnabled(groupId string, defaultEnabled bool) bool {
+	s.cmdGroupMu.RLock()
+	defer s.cmdGroupMu.RUnlock()
+	if s.cmdGroupEnabled == nil {
+		return defaultEnabled
+	}
+	if v, ok := s.cmdGroupEnabled[groupId]; ok {
+		return v
+	}
+	return defaultEnabled
+}
+
+func (s *Agent) GetCommandGroupOverrides() map[string]bool {
+	s.cmdGroupMu.RLock()
+	defer s.cmdGroupMu.RUnlock()
+	if len(s.cmdGroupEnabled) == 0 {
+		return map[string]bool{}
+	}
+	out := make(map[string]bool, len(s.cmdGroupEnabled))
+	for k, v := range s.cmdGroupEnabled {
+		out[k] = v
+	}
+	return out
+}
+
+func (s *Agent) ApplyCommandGroupOverrides(overrides map[string]bool) {
+	s.cmdGroupMu.Lock()
+	defer s.cmdGroupMu.Unlock()
+	if len(overrides) == 0 {
+		s.cmdGroupEnabled = nil
+		return
+	}
+	s.cmdGroupEnabled = make(map[string]bool, len(overrides))
+	for k, v := range overrides {
+		s.cmdGroupEnabled[k] = v
+	}
+}
+
+func (s *Agent) CommandGroupOverridesJSON() string {
+	m := s.GetCommandGroupOverrides()
+	if len(m) == 0 {
+		return ""
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
+
+func (s *Agent) LoadCommandGroupOverridesJSON(raw string) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "{}" || raw == "null" {
+		s.ApplyCommandGroupOverrides(nil)
+		return
+	}
+	var m map[string]bool
+	if err := json.Unmarshal([]byte(raw), &m); err != nil {
+		return
+	}
+	s.ApplyCommandGroupOverrides(m)
 }
 
 func (s *Agent) ProcessData(packed []byte) error {

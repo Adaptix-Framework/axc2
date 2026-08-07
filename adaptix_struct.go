@@ -163,6 +163,7 @@ type AgentData struct {
 	Color        string `json:"a_color"`
 	TargetId     int64  `json:"a_target"`
 	CustomData   []byte `json:"a_custom_data"`
+	CmdGroups    string `json:"a_cmd_groups_json,omitempty"`
 }
 
 type TaskDataTunnel struct {
