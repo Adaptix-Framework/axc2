@@ -370,6 +370,7 @@ type PayloadData struct {
 	Watermark  string   `json:"p_watermark,omitempty"`
 	Filename   string   `json:"p_filename"`
 	Notes      string   `json:"p_notes,omitempty"`
+	Tag        string   `json:"p_tag,omitempty"`
 	Uid        string   `json:"p_uid,omitempty"`
 	Color      string   `json:"p_color,omitempty"`
 	Missing    bool     `json:"p_missing,omitempty"`

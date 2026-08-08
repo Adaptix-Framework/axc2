@@ -57,6 +57,7 @@ type Teamserver interface {
 	TsPayloadHide(ids []int64, hidden bool) error
 	TsPayloadUpdateMeta(id int64, name, notes, artifact, arch string, hidden bool) (PayloadData, error)
 	TsPayloadSetColor(ids []int64, background, foreground string, reset bool) error
+	TsPayloadSetTag(ids []int64, tag string) error
 	TsPayloadRemove(ids []int64, hard bool) error
 	TsPayloadSync() ([]byte, error)
 	TsPayloadImport(name, agentType, artifact, arch, creator string, listeners []string, content []byte, configJson string) (PayloadData, error)
@@ -216,6 +217,9 @@ type Teamserver interface {
 	TsEventUnmute(eventType string) error
 	TsEventMutesList() (string, error) // JSON []string
 	TsEventHookSetEnabled(hookID string, enabled bool) error
+	TsEventEmit(eventType string, text string) error
+	TsEventEmitFrom(eventType string, source string, text string) error
+	TsEventTypesList() (string, error)
 
 	TsGroupList(scope string) []map[string]interface{}
 	TsGroupCreate(parentId int64, name string, scope string) error
