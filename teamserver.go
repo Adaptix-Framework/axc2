@@ -263,6 +263,7 @@ type Teamserver interface {
 
 	TsFrameHasPending(sessionId int64) bool
 	TsFramePut(sessionId int64, index uint32, data []byte, totalSize uint32, chunkCount uint16) (bool, uint32, uint32, uint32, []byte)
+	TsFramePutDecoded(sessionId int64, index uint32, data []byte, totalSize uint32, chunkCount uint16, decode func(assembled []byte) ([]byte, error)) (bool, uint32, uint32, uint32, []byte)
 	TsFramePutStream(sessionId int64, seqNum uint32, data []byte, isLast bool) (bool, []byte)
 	TsFrameGetChunk(sessionId int64, reqOffset uint32, maxChunkSize int, encode func([]byte) []byte) (uint32, uint32, []byte, uint32, bool)
 	TsFrameGetChunkSticky(sessionId int64, reqOffset uint32, maxChunkSize int, encode func([]byte) []byte) (uint32, uint32, []byte, uint32, bool)
