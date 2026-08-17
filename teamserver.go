@@ -15,6 +15,7 @@ type WebSocketConn interface {
 type Teamserver interface {
 	TsAgentGenID() int64
 	TsAgentList() (string, error)
+	TsAgentCatalog() (string, error)
 	TsAgentGetById(agentId int64) (AgentData, bool)
 	TsAgentIsExists(agentId int64) bool
 	TsAgentIdByUID(uid []byte) (int64, bool)
@@ -181,6 +182,8 @@ type Teamserver interface {
 	TsPivotDelete(pivotId string) error
 
 	TsListenerList() (string, error)
+	TsListenerGet(listenerName string) (ListenerData, bool)
+	TsListenerCatalog() (string, error)
 	TsListenerStart(listenerName string, configType string, config string, createTime int64, watermark string, customData []byte, tags string) error
 	TsListenerEdit(listenerName string, configType string, config string, tags string) error
 	TsListenerStop(listenerName string, configType string) error
@@ -196,6 +199,7 @@ type Teamserver interface {
 	TsPluginServiceCall(serviceName string, operator string, function string, args string)
 	TsPluginServiceCallWait(serviceName string, operator string, function string, args string, timeoutMs int) (resultJSON string, err error)
 	TsServiceList() (string, error)
+	TsServiceCatalog() (string, error)
 
 	TsAxScriptLoadUser(name string, script string) error
 	TsAxScriptUnloadUser(name string) error

@@ -55,6 +55,7 @@ const (
 
 type PluginService interface {
 	Call(operator string, function string, args string)
+	CallRPC(operator string, function string, args string) (resultJSON string, err error)
 }
 
 type PluginListener interface {
