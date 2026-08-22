@@ -84,7 +84,6 @@ type Teamserver interface {
 	TsTunnelClientNewChannel(TunnelData string, wsconn WebSocketConn, clientName string) error
 	TsTunnelClientChannelNack(tunnelId, channelId int64, clientName string) error
 	TsTunnelStart(TunnelId int64) (int64, error)
-	TsTunnelStart(TunnelId int64) (int64, error)
 	TsTunnelDeactivate(TunnelId int64, clientName string) error
 	TsTunnelClientStop(TunnelId int64, Client string) error
 	TsTunnelStop(TunnelId int64) error
