@@ -33,9 +33,8 @@ type Teamserver interface {
 
 	TsAgentProcessData(agentId int64, bodyData []byte) error
 	TsAgentBuildEmptyTasks(agentId int64) ([]byte, error)
-	TsAgentGetHostedAll(agentId int64, maxDataSize int) ([]byte, error)
-	TsAgentGetHostedTasks(agentId int64, maxDataSize int) ([]byte, error)
-	TsAgentGetHostedTasksCount(agentId int64, count int, maxDataSize int) ([]byte, error)
+	TsAgentGetHostedAll(agentId int64, maxDataSize int) ([]byte, StatTasks, error)
+	TsAgentGetHostedTasks(agentId int64, maxCount int, maxDataSize int) ([]byte, StatTasks, error)
 	TsAgentUpdateDataPartial(agentId int64, updateData interface{}) error
 	TsAgentSetTick(agentId int64, listenerName string) error
 	TsAgentEncryptData(agentId int64, data []byte) ([]byte, error)
@@ -82,7 +81,9 @@ type Teamserver interface {
 
 	TsTunnelList() (string, error)
 	TsTunnelClientStart(AgentId int64, Listen bool, Type int, Info string, Lhost string, Lport int, Client string, Thost string, Tport int, AuthUser string, AuthPass string) (int64, error)
-	TsTunnelClientNewChannel(TunnelData string, wsconn WebSocketConn) error
+	TsTunnelClientNewChannel(TunnelData string, wsconn WebSocketConn, clientName string) error
+	TsTunnelClientChannelNack(tunnelId, channelId int64, clientName string) error
+	TsTunnelStart(TunnelId int64) (int64, error)
 	TsTunnelStart(TunnelId int64) (int64, error)
 	TsTunnelDeactivate(TunnelId int64, clientName string) error
 	TsTunnelClientStop(TunnelId int64, Client string) error
@@ -103,6 +104,7 @@ type Teamserver interface {
 	TsTunnelConnectionResume(AgentId int64, channelId int64, ioDirect bool)
 	TsTunnelConnectionData(channelId int64, data []byte)
 	TsTunnelConnectionAccept(tunnelId int64, channelId int64)
+	TsTunnelConnectionBindReply(channelId int64, phase int, atyp int, addr []byte, port int)
 	TsTunnelPause(channelId int64)
 	TsTunnelResume(channelId int64)
 	TsTunnelChannelExists(channelId int64) bool
@@ -271,6 +273,7 @@ type Teamserver interface {
 	TsFramePutStream(sessionId int64, seqNum uint32, data []byte, isLast bool) (bool, []byte)
 	TsFrameGetChunk(sessionId int64, reqOffset uint32, maxChunkSize int, encode func([]byte) []byte) (uint32, uint32, []byte, uint32, bool)
 	TsFrameGetChunkSticky(sessionId int64, reqOffset uint32, maxChunkSize int, encode func([]byte) []byte) (uint32, uint32, []byte, uint32, bool)
+	TsFrameTakeStatTasks(sessionId int64) (StatTasks, int, bool)
 	TsFrameAckDelivery(sessionId int64, ackOffset uint32, ackNonce uint32)
 	TsFrameResetUpstream(sessionId int64)
 	TsFrameResetDownstream(sessionId int64)

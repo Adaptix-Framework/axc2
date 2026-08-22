@@ -35,6 +35,10 @@ const (
 	TUNNEL_TYPE_SOCKS5_AUTH = 3
 	TUNNEL_TYPE_LOCAL_PORT  = 4
 	TUNNEL_TYPE_REVERSE     = 5
+	TUNNEL_TYPE_SOCKS_BIND  = 6
+
+	TUNNEL_BIND_LISTENING = 2
+	TUNNEL_BIND_ACCEPTED  = 3
 
 	ADDRESS_TYPE_IPV4   = 1
 	ADDRESS_TYPE_DOMAIN = 3
@@ -102,6 +106,7 @@ type TunnelCallbacks struct {
 	Resume     func(channelId int64) TaskData
 	Close      func(channelId int64) TaskData
 	Reverse    func(tunnelId int64, port int) TaskData
+	BindTCP    func(channelId int64, addressType int, address string, port int) TaskData
 }
 
 type TerminalCallbacks struct {
