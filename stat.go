@@ -94,6 +94,53 @@ func MakeStatTasks(tasks []TaskData) StatTasks {
 	return st
 }
 
+func FormatTransferNote(received bool, nBytes, nRequests int) string {
+	dir := "Sent"
+	if received {
+		dir = "Received"
+	}
+	msg := fmt.Sprintf("%s %s", dir, FormatByteSize(nBytes))
+	if nRequests > 1 {
+		msg = fmt.Sprintf("%s (in %d requests)", msg, nRequests)
+	}
+	return msg
+}
+
+func QuietFrameRecv(nBytes, nRequests int) bool {
+	return nBytes <= 0 || (nRequests <= 1 && nBytes < 256)
+}
+
+type frameNoteTS interface {
+	TsAgentConsoleOutput(agentId int64, client string, messageType int, message string, clearText string, store bool)
+	TsFrameTakeStatTasks(sessionId int64) (StatTasks, int, bool)
+	TsFrameTakeStatRecv(sessionId int64) (size int, requests int, ok bool)
+}
+
+func NoteFrameRecv(ts frameNoteTS, agentId int64) {
+	if ts == nil || agentId == 0 {
+		return
+	}
+	sz, n, ok := ts.TsFrameTakeStatRecv(agentId)
+	if !ok || QuietFrameRecv(sz, n) {
+		return
+	}
+	ts.TsAgentConsoleOutput(agentId, "", MESSAGE_INFO, FormatTransferNote(true, sz, n), "", false)
+}
+
+func NoteFrameSent(ts frameNoteTS, agentId int64) {
+	if ts == nil || agentId == 0 {
+		return
+	}
+	st, n, ok := ts.TsFrameTakeStatTasks(agentId)
+	if !ok || st.Select().Empty() {
+		return
+	}
+	if st.Packed <= 0 {
+		return
+	}
+	ts.TsAgentConsoleOutput(agentId, "", MESSAGE_INFO, FormatTransferNote(false, st.Packed, n), "", false)
+}
+
 func FormatByteSize(n int) string {
 	const (
 		kb = 1024.0

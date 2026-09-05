@@ -26,8 +26,10 @@ type Teamserver interface {
 	TsAgentTickUpdate(ctx context.Context)
 
 	TsAgentCommand(agentName string, agentId int64, clientName string, hookId string, handlerId string, cmdline string, ui bool, args map[string]any) error
+	TsAgentCommandResult(agentName string, agentId int64, clientName string, hookId string, handlerId string, cmdline string, ui bool, args map[string]any) (taskId int64, local bool, err error)
 	TsAgentConsoleOutput(agentId int64, client string, messageType int, message string, clearText string, store bool)
 	TsAgentConsoleOutputClient(agentId int64, client string, messageType int, message string, clearText string)
+	TsAgentIoProgress(agentId int64, upFilled, upTotal, downFilled, downTotal uint32, startedUnix int64, active bool)
 	TsAgentConsoleErrorCommand(agentId int64, client string, cmdline string, message string, HookId string, HandlerId string)
 	TsAgentConsoleLocalCommand(agentId int64, client string, cmdline string, message string, text string)
 
@@ -206,9 +208,11 @@ type Teamserver interface {
 	TsAxScriptUnloadUser(name string) error
 	TsAxScriptList() (string, error)
 	TsAxScriptCommands() (string, error)
+	TsAxScriptCommandsForAgent(agentId int64) ([]byte, error)
 	TsAxScriptResolveHooks(agentName string, agentId int64, listenerRegName string, os int, cmdline string, args map[string]interface{}, client string) (string, string, bool, error)
 	TsAxScriptIsServerHook(id string) bool
 	TsAxScriptParseAndExecute(agentId int64, username string, cmdline string) error
+	TsAxScriptParseAndExecuteResult(agentId int64, username string, cmdline string) (taskId int64, local bool, err error)
 	AxGetAgentContext(agentId int64) (agentName string, listenerRegName string, osType int, err error)
 
 	TsEventHandlersList() (string, error) // JSON []EventHandlerInfo (full)
@@ -273,6 +277,7 @@ type Teamserver interface {
 	TsFrameGetChunk(sessionId int64, reqOffset uint32, maxChunkSize int, encode func([]byte) []byte) (uint32, uint32, []byte, uint32, bool)
 	TsFrameGetChunkSticky(sessionId int64, reqOffset uint32, maxChunkSize int, encode func([]byte) []byte) (uint32, uint32, []byte, uint32, bool)
 	TsFrameTakeStatTasks(sessionId int64) (StatTasks, int, bool)
+	TsFrameTakeStatRecv(sessionId int64) (size int, requests int, ok bool)
 	TsFrameAckDelivery(sessionId int64, ackOffset uint32, ackNonce uint32)
 	TsFrameResetUpstream(sessionId int64)
 	TsFrameResetDownstream(sessionId int64)
